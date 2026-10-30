@@ -232,6 +232,19 @@ public final class TvMainActivity extends Activity {
                     + "Abra o YouTube, navegue e retorne para atualizar.",
                     16, Color.rgb(255, 197, 114));
         }
+        long remoteEvent = TvYoutubeAccessibilityService.lastRemoteKeyElapsed();
+        if (remoteEvent > 0) {
+            long seconds = Math.max(0L, (SystemClock.elapsedRealtime() - remoteEvent) / 1000L);
+            text("Botão OK recebido do controle: SIM (há " + seconds + " s)",
+                    16, Color.rgb(102, 237, 190));
+        } else {
+            text("Botão OK recebido do controle: NENHUM registrado. "
+                    + "Abra o YouTube, selecione um vídeo com OK e volte aqui.",
+                    16, Color.rgb(255, 197, 114));
+        }
+        text("Seleções impedidas nesta sessão: "
+                + TvYoutubeAccessibilityService.blockedRemotePresses(),
+                16, Color.LTGRAY);
         if (configured && connected) {
             text("Filtro ATIVO. Falta validar a detecção no YouTube desta TV.",
                     17, Color.rgb(102, 237, 190));
@@ -267,9 +280,9 @@ public final class TvMainActivity extends Activity {
         }
         text("As regras são armazenadas apenas nesta TV. Não são sincronizadas com o celular.",
                 16, Color.LTGRAY);
-        text("Limitação: o YouTube para TV pode ocultar títulos dos serviços de "
-                        + "Acessibilidade. A reprodução pode começar antes do bloqueio ou não ser "
-                        + "identificada. Não substitui a supervisão da responsável.",
+        text("O filtro tenta bloquear pesquisas e impedir OK em vídeos proibidos. "
+                        + "Se a TV não entregar teclas ou títulos acessíveis, "
+                        + "a proteção pode falhar. Não substitui a supervisão da responsável.",
                 15, Color.LTGRAY);
     }
 
