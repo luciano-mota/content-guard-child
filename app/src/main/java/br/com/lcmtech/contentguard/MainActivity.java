@@ -138,7 +138,7 @@ public final class MainActivity extends Activity {
         if (!authenticated) return;
         initializeLayout();
         addHeading("ContentGuard", 27);
-        addBody("Bloqueio local por regras • Android 0.6 (bloqueio de reprodução)");
+        addBody("Bloqueio local por regras • Android 0.7 (feed do TikTok e Kwai)");
         addHeading("1. Ativar proteção", 19);
         addBody(isServiceEnabled() ? "✓ Serviço de acessibilidade ativado" :
                 "⚠ Serviço de acessibilidade desativado");
@@ -164,7 +164,8 @@ public final class MainActivity extends Activity {
         addHeading("4. Regras de bloqueio", 19);
         addBody("PALAVRA: qualquer desenho, personagem, canal ou tema indesejado. Vale " +
                 "para pesquisas e sugestões no YouTube, Google e navegadores, pesquisas do " +
-                "TikTok e Kwai, títulos no player do YouTube e título/canal de vídeos " +
+                "TikTok e Kwai, legenda/hashtags/perfil do vídeo visível no feed do TikTok e " +
+                "Kwai (pula para o próximo), títulos no player do YouTube e título/canal de vídeos " +
                 "em reprodução. Cadastre também nomes de personagens e de canais. " +
                 "DOMÍNIO: endereço digitado em navegadores compatíveis. " +
                 "APP: pacote do aplicativo bloqueado ao abrir.");
@@ -191,8 +192,8 @@ public final class MainActivity extends Activity {
                 "permissão de internet e não registra pesquisas ou histórico de navegação. " +
                 "A API de acessibilidade pode ver textos presentes nas telas dos apps monitorados, " +
                 "mediante autorização da responsável.");
-        addBody("O filtro do TikTok/Kwai depende dos campos de pesquisa acessíveis; " +
-                "não filtra o feed de vídeos, comentários nem mensagens privadas. " +
+        addBody("No TikTok/Kwai, só é reconhecido o vídeo cuja legenda, hashtags ou perfil " +
+                "visíveis contenham uma palavra cadastrada; o vídeo pode tocar por um instante. " +
                 "Não garante ocultar miniaturas, sugestões ou vídeos antes de aparecerem. " +
                 "Links abertos sem digitar a URL podem escapar do filtro de domínios. " +
                 "Vídeos cujo título e canal não contêm nenhuma palavra cadastrada não são " +
@@ -205,7 +206,9 @@ public final class MainActivity extends Activity {
                 .setTitle("Uso da acessibilidade")
                 .setMessage("Com sua autorização, o ContentGuard observa eventos de interface " +
                         "do YouTube, TikTok, Kwai e navegadores compatíveis, incluindo " +
-                        "campos de pesquisa e sugestões selecionadas. Isso é necessário " +
+                        "campos de pesquisa, sugestões selecionadas e o texto do vídeo " +
+                        "visível no feed do TikTok/Kwai. Para pular um vídeo bloqueado, " +
+                        "o serviço faz o gesto de deslizar para cima. Isso é necessário " +
                         "para tentar interromper conteúdos proibidos. Nenhum desses textos " +
                         "é salvo ou enviado. O serviço pode ser desligado nas Configurações.")
                 .setNegativeButton("Cancelar", null)

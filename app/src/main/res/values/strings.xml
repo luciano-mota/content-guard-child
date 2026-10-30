@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">ContentGuard</string>
-    <string name="accessibility_description">Com consentimento da responsável, identifica termos visíveis no YouTube e em navegadores compatíveis para tentar interromper pesquisas e conteúdo proibidos. Não envia dados pela internet e não salva histórico.</string>
+    <string name="accessibility_description">Com consentimento da responsável, identifica termos visíveis no YouTube, TikTok, Kwai e em navegadores compatíveis para tentar interromper pesquisas e vídeos proibidos. Não envia dados pela internet e não salva histórico.</string>
 </resources>

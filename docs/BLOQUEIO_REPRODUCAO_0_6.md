@@ -64,6 +64,8 @@ adb shell cmd notification allow_listener br.com.lcmtech.contentguard.tv/br.com.
 | Barra de pesquisa do Google na tela inicial, Google Go | Campos de pesquisa monitorados |
 | Outro navegador (Chrome Beta, Opera, DuckDuckGo, Mi, Vivaldi, Kiwi, UC, Firefox Focus...) | Campos de pesquisa/URL monitorados |
 | Escrever diferente: `B0b Esp0nja`, `bobesponja`, `B O B`, `Boob Espoonja`, `Sponge Bob` | Comparação tolerante, sem confundir `Bobby` com `Bob` |
+| Vídeo no feed do TikTok/Kwai (0.7) | Legenda, hashtags ou perfil visíveis: pula para o próximo vídeo; se continuar aparecendo conteúdo bloqueado (busca, perfil), volta de tela |
+| TikTok Lite | Mesmo tratamento do TikTok |
 | Desativar a Acessibilidade ou o Acesso a notificações | Telas que citam o ContentGuard são fechadas (HOME) |
 | Forçar parada, limpar dados ou desinstalar pelas Configurações | Idem (Informações do app, desinstalação) |
 
@@ -80,8 +82,9 @@ relógio do aparelho não estende a liberação além de 15 minutos.
   e de canais.
 - **Modo de segurança**, ADB e restauração de fábrica desativam apps de terceiros.
 - Apps de vídeo que não publicam sessão de mídia e não estão na lista de pesquisa.
-- No feed do TikTok/Kwai, só a pesquisa é filtrada; o bloqueio de reprodução vale
-  se o app publicar a sessão de mídia (varia por versão).
+- No TikTok/Kwai (0.7), só é reconhecido o vídeo cuja legenda, hashtags ou nome
+  de perfil **visíveis** contenham uma palavra cadastrada. Vídeos sem texto
+  identificável passam. O vídeo pode tocar por um instante antes de ser pulado.
 - Instalar outro app de vídeo: use o Family Link para exigir aprovação de instalação.
 
 Teste sempre num aparelho de teste antes de confiar na proteção.

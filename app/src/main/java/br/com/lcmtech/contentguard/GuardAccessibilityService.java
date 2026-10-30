@@ -1,6 +1,9 @@
 package br.com.lcmtech.contentguard;
 
 import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.GestureDescription;
+import android.graphics.Path;
+import android.util.DisplayMetrics;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.view.accessibility.AccessibilityEvent;
@@ -38,6 +41,8 @@ public final class GuardAccessibilityService extends AccessibilityService {
                     "com.kiwibrowser.browser", "com.UCMobile.intl")));
     private List<Rule> rules = Collections.emptyList();
     private long lastBlock = 0L;
+    private long lastFeedScan = 0L;
+    private long lastFeedSkip = 0L;
     private SharedPreferences preferences;
     private SharedPreferences.OnSharedPreferenceChangeListener listener;
 
@@ -68,10 +73,11 @@ public final class GuardAccessibilityService extends AccessibilityService {
             }
         }
 
-        // TikTok and Kwai: search fields and selected results only.
-        // Do not treat comments, direct messages, or arbitrary feed titles as queries.
+        // TikTok and Kwai: search fields/selected results, then the visible
+        // feed video (caption, hashtags, profile name).
         if (SocialSearchRules.supportsPackage(pkg)) {
             handleSocialSearchEvent(event);
+            if (lastBlock < now) handleSocialFeedEvent(event, now);
             return;
         }
 
@@ -122,8 +128,7 @@ public final class GuardAccessibilityService extends AccessibilityService {
     }
 
     /**
-     * Search-only coverage for TikTok and Kwai. We intentionally do not read
-     * unrelated feed text, comments or private messages.
+     * Search coverage for TikTok and Kwai.
      *
      * Accessibility exposure differs by app/version: this is best effort.
      */
@@ -175,6 +180,72 @@ public final class GuardAccessibilityService extends AccessibilityService {
                 root.recycle();
             }
         }
+    }
+
+    /**
+     * TikTok/Kwai do not publish the playing video to the media session, so
+     * the playback guard cannot see it. Check the text visible on screen
+     * (caption, hashtags, profile name): first swipe to the next video; if
+     * blocked text is still on screen right after, leave the screen.
+     */
+    private void handleSocialFeedEvent(AccessibilityEvent event, long now) {
+        int type = event.getEventType();
+        if (type != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+                && type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+        if (now - lastFeedScan < SocialSearchRules.FEED_SCAN_INTERVAL_MS) return;
+        lastFeedScan = now;
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null) return;
+        try {
+            if (!visibleTextMatches(root, 0, new int[] {300})) return;
+        } finally {
+            root.recycle();
+        }
+        if (SocialSearchRules.shouldLeaveFeed(lastFeedSkip, now)) {
+            lastFeedSkip = 0L;
+            block("Vídeo bloqueado", false);
+            return;
+        }
+        lastFeedSkip = now;
+        lastBlock = now;
+        if (!swipeToNextVideo()) GuardControl.leaveScreen(false);
+        Toast.makeText(this, "Vídeo bloqueado", Toast.LENGTH_SHORT).show();
+    }
+
+    /** Only text the child can see; editable fields are handled as searches. */
+    private boolean visibleTextMatches(AccessibilityNodeInfo node, int depth, int[] budget) {
+        if (node == null || budget[0]-- <= 0) return false;
+        if (node.isVisibleToUser() && !node.isEditable()) {
+            CharSequence text = node.getText();
+            CharSequence description = node.getContentDescription();
+            if ((text != null && text.length() <= 300 && matchesKeyword(text.toString()))
+                    || (description != null && description.length() <= 300
+                        && matchesKeyword(description.toString()))) return true;
+        }
+        if (depth >= 30) return false;
+        for (int i = 0; i < node.getChildCount() && budget[0] > 0; i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) continue;
+            try {
+                if (visibleTextMatches(child, depth + 1, budget)) return true;
+            } finally {
+                child.recycle();
+            }
+        }
+        return false;
+    }
+
+    /** Same gesture the child uses to go to the next video. */
+    private boolean swipeToNextVideo() {
+        DisplayMetrics metrics = getResources().getDisplayMetrics();
+        float x = metrics.widthPixels / 2f;
+        Path path = new Path();
+        path.moveTo(x, metrics.heightPixels * 0.75f);
+        path.lineTo(x, metrics.heightPixels * 0.25f);
+        GestureDescription gesture = new GestureDescription.Builder()
+                .addStroke(new GestureDescription.StrokeDescription(path, 0L, 200L))
+                .build();
+        return dispatchGesture(gesture, null, null);
     }
 
     private void clearEditable(AccessibilityNodeInfo node) {

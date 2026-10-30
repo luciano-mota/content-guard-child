@@ -15,8 +15,8 @@ android {
     productFlavors {
         mobile {
             dimension 'device'
-            versionCode 7
-            versionName '0.6.0-playback-guard'
+            versionCode 8
+            versionName '0.7.0-social-feed'
         }
         tv {
             dimension 'device'

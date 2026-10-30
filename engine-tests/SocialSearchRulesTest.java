@@ -14,6 +14,14 @@ public final class SocialSearchRulesTest {
                 "TikTok regional package");
         check(SocialSearchRules.supportsPackage("com.kwai.video"),
                 "Kwai Brazil package");
+        check(SocialSearchRules.supportsPackage("com.zhiliaoapp.musically.go"),
+                "TikTok Lite package");
+        check(!SocialSearchRules.shouldLeaveFeed(0L, 10_000L),
+                "first blocked feed video is skipped");
+        check(SocialSearchRules.shouldLeaveFeed(10_000L, 12_000L),
+                "blocked again right after skipping: leave the screen");
+        check(!SocialSearchRules.shouldLeaveFeed(10_000L, 20_000L),
+                "later blocked video is skipped again");
         check(!SocialSearchRules.supportsPackage("com.google.android.youtube"),
                 "does not change YouTube treatment");
         check(!SocialSearchRules.supportsPackage("com.fake.kwai.video"),
