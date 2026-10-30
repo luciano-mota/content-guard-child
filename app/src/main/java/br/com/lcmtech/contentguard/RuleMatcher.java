@@ -41,7 +41,7 @@ public final class RuleMatcher {
             URI uri = URI.create(value);
             String host = uri.getHost();
             if (host == null || !host.toLowerCase(Locale.ROOT)
-                    .matches("(?:www\\\\.)?google\\\\.[a-z]{2,3}(?:\\\\.[a-z]{2})?")) return false;
+                    .matches("(?:www\\.)?google\\.[a-z]{2,3}(?:\\.[a-z]{2})?")) return false;
             if (!"/search".equals(uri.getPath())) return false;
             String query = uri.getRawQuery();
             if (query == null) return false;
