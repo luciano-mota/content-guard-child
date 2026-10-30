@@ -3,11 +3,14 @@
     <!-- No INTERNET permission: no browsing history or search text leaves the device. -->
     <application
         android:allowBackup="false"
-        android:label="ContentGuard"
+        android:label="ContentGuard Child"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:theme="@style/AppTheme"
         android:supportsRtl="true">
+        <activity android:name=".MainActivity" android:exported="false" />
         <activity
-            android:name=".MainActivity"
+            android:name=".SplashActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
