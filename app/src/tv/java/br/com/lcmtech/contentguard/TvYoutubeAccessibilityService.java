@@ -17,6 +17,11 @@ import java.util.Locale;
  */
 public final class TvYoutubeAccessibilityService extends AccessibilityService {
     private static final String YOUTUBE_TV = "com.google.android.youtube.tv";
+    // Both TV activity and AccessibilityService run in the same app process.
+    // This reflects onServiceConnected rather than just the Settings toggle.
+    private static volatile boolean connected;
+
+    public static boolean isConnected() { return connected; }
     private List<Rule> rules = Collections.emptyList();
     private long lastBlock;
     private SharedPreferences prefs;
@@ -28,6 +33,7 @@ public final class TvYoutubeAccessibilityService extends AccessibilityService {
         prefs = getSharedPreferences(RuleRepository.PREFS, MODE_PRIVATE);
         changeListener = (p, key) -> rules = new RuleRepository(this).getAll();
         prefs.registerOnSharedPreferenceChangeListener(changeListener);
+        connected = true;
     }
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
@@ -148,6 +154,7 @@ public final class TvYoutubeAccessibilityService extends AccessibilityService {
     @Override public void onInterrupt() {}
 
     @Override public void onDestroy() {
+        connected = false;
         if (prefs != null && changeListener != null)
             prefs.unregisterOnSharedPreferenceChangeListener(changeListener);
         super.onDestroy();
