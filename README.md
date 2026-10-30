@@ -4,7 +4,7 @@ Aplicativo **experimental** de controle parental local. Regras genéricas por **
 
 ## Status
 
-- ✅ Regras cadastráveis/editáveis por remoção e inclusão; persistência local (SharedPreferences JSON).
+- ✅ Cadastro em lote de palavras e expressões, separadas por vírgulas (ou linhas), com remoção de entradas vazias/duplicadas e persistência local (SharedPreferences JSON).
 - ✅ PIN parental de 4 a 8 dígitos com `PBKDF2WithHmacSHA256` e sal aleatório, para a **tela de configurações**.
 - ✅ Motor puro Java de correspondência por expressão (ignorando acentos, caixa e pontuação) e domínio por host/sufixo confiável.
 - ✅ Motor de regras testado com `engine-tests/run.sh`.
@@ -13,6 +13,23 @@ Aplicativo **experimental** de controle parental local. Regras genéricas por **
 - ⚠️ Regra de aplicativo tenta retornar à tela inicial quando o pacote bloqueado abre.
 - ❌ Não há remoção individual de miniaturas do YouTube, varredura de toda a página, classificação semântica, inspeção HTTPS, VPN ou suporte Smart TV.
 - ❌ APK **não gerado nem testado em aparelho** neste ambiente (Android SDK/Gradle não disponíveis). O projeto é um ponto de partida para validação no Android Studio.
+
+## Cadastro de palavras em lote
+
+Abra **+ Adicionar regra → Palavra ou expressão** e digite, por exemplo:
+
+```text
+Bob Esponja, SpongeBob, Sponge Bob, SquarePants
+```
+
+O ContentGuard cria uma regra **por expressão**, preservando os espaços internos
+de nomes compostos. Também é possível colar uma lista com uma expressão por linha.
+Entradas vazias e equivalentes (acentos, pontuação e caixa) são ignoradas.
+Regras que já estão salvas não são duplicadas. Um termo inválido (fora do
+limite de 2 a 180 caracteres) cancela todo o lote, sem salvar apenas parte.
+Máximo de 500 entradas distintas por lote. O cadastro de DOMÍNIO e APP
+continua individual. A eficácia do bloqueio depende dos elementos expostos
+pelo YouTube/navegador e deve ser testada em um dispositivo de teste.
 
 ## Compilar com GitHub Actions (sem Android Studio)
 
