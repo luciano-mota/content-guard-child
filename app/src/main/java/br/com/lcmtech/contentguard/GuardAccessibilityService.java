@@ -51,6 +51,13 @@ public final class GuardAccessibilityService extends AccessibilityService {
             }
         }
 
+        // TikTok and Kwai: search fields and selected results only.
+        // Do not treat comments, direct messages, or arbitrary feed titles as queries.
+        if (SocialSearchRules.supportsPackage(pkg)) {
+            handleSocialSearchEvent(event);
+            return;
+        }
+
         if (!SUPPORTED_CONTENT_APPS.contains(pkg)) return;
         // Chrome's omnibox may report the focused URL field through window-content
         // events rather than a directly editable TYPE_VIEW_TEXT_CHANGED source.
@@ -87,6 +94,177 @@ public final class GuardAccessibilityService extends AccessibilityService {
         } finally {
             if (source != null) source.recycle();
         }
+    }
+
+    /**
+     * Search-only coverage for TikTok and Kwai. We intentionally do not read
+     * unrelated feed text, comments or private messages.
+     *
+     * Accessibility exposure differs by app/version: this is best effort.
+     */
+    private void handleSocialSearchEvent(AccessibilityEvent event) {
+        int type = event.getEventType();
+        if (type == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
+            AccessibilityNodeInfo source = event.getSource();
+            try {
+                if (source != null && socialSearchField(source)
+                        && source.getText() != null
+                        && matchesKeyword(source.getText().toString())) {
+                    clearEditable(source);
+                    block("Pesquisa bloqueada", false);
+                    return;
+                }
+            } finally {
+                if (source != null) source.recycle();
+            }
+        }
+
+        if (type == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
+                || type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+                || type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            AccessibilityNodeInfo root = getRootInActiveWindow();
+            if (root == null) return;
+            try {
+                if (blockSocialSearchFieldInTree(root, 0, new int[] {150})) return;
+            } finally {
+                root.recycle();
+            }
+        }
+
+        if (type == AccessibilityEvent.TYPE_VIEW_CLICKED
+                || type == AccessibilityEvent.TYPE_VIEW_SELECTED) {
+            AccessibilityNodeInfo root = getRootInActiveWindow();
+            if (root == null) return;
+            try {
+                // Only selected suggestions/results in a recognisable search UI.
+                // A normal feed card can mention forbidden words but is not a search.
+                if (!hasSocialSearchField(root, 0, new int[] {140})) return;
+                AccessibilityNodeInfo source = event.getSource();
+                try {
+                    if (socialClickedItemMatches(event, source))
+                        block("Pesquisa bloqueada", false);
+                } finally {
+                    if (source != null) source.recycle();
+                }
+            } finally {
+                root.recycle();
+            }
+        }
+    }
+
+    private void clearEditable(AccessibilityNodeInfo node) {
+        Bundle args = new Bundle();
+        args.putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "");
+        node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+    }
+
+    private boolean socialSearchField(AccessibilityNodeInfo node) {
+        if (node == null || !node.isEditable() || node.isPassword()) return false;
+        if (searchNodeLabel(node)) return true;
+        AccessibilityNodeInfo parent = node.getParent();
+        for (int depth = 0; depth < 2 && parent != null; depth++) {
+            AccessibilityNodeInfo next = null;
+            try {
+                if (searchNodeLabel(parent)) return true;
+                next = parent.getParent();
+            } finally {
+                parent.recycle();
+            }
+            parent = next;
+        }
+        return false;
+    }
+
+    private boolean searchNodeLabel(AccessibilityNodeInfo node) {
+        CharSequence hint = node.getHintText();
+        CharSequence description = node.getContentDescription();
+        return SocialSearchRules.isSearchFieldLabel(node.getViewIdResourceName())
+                || (hint != null && SocialSearchRules.isSearchFieldLabel(hint.toString()))
+                || (description != null
+                    && SocialSearchRules.isSearchFieldLabel(description.toString()));
+    }
+
+    private boolean blockSocialSearchFieldInTree(AccessibilityNodeInfo node,
+                                                  int depth, int[] budget) {
+        if (node == null || budget[0]-- <= 0) return false;
+        if (socialSearchField(node) && node.getText() != null
+                && matchesKeyword(node.getText().toString())) {
+            clearEditable(node);
+            block("Pesquisa bloqueada", false);
+            return true;
+        }
+        if (depth >= 11) return false;
+        for (int i = 0; i < node.getChildCount() && budget[0] > 0; i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) continue;
+            try {
+                if (blockSocialSearchFieldInTree(child, depth + 1, budget))
+                    return true;
+            } finally {
+                child.recycle();
+            }
+        }
+        return false;
+    }
+
+    private boolean hasSocialSearchField(AccessibilityNodeInfo node,
+                                          int depth, int[] budget) {
+        if (node == null || budget[0]-- <= 0) return false;
+        if (socialSearchField(node)) return true;
+        if (depth >= 11) return false;
+        for (int i = 0; i < node.getChildCount() && budget[0] > 0; i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) continue;
+            try {
+                if (hasSocialSearchField(child, depth + 1, budget))
+                    return true;
+            } finally {
+                child.recycle();
+            }
+        }
+        return false;
+    }
+
+    private boolean socialClickedItemMatches(AccessibilityEvent event,
+                                              AccessibilityNodeInfo source) {
+        CharSequence description = event.getContentDescription();
+        if (description != null && matchesKeyword(description.toString())) return true;
+        for (CharSequence text : event.getText())
+            if (text != null && matchesKeyword(text.toString())) return true;
+        if (source == null) return false;
+        // Limit the scan to the touched row; never scan the entire results list.
+        if (socialSmallSubtreeMatches(source, 2, new int[] {20})) return true;
+        AccessibilityNodeInfo parent = source.getParent();
+        if (parent == null) return false;
+        try {
+            return parent.isClickable() && parent.getChildCount() <= 5
+                    && socialSmallSubtreeMatches(parent, 2, new int[] {18});
+        } finally {
+            parent.recycle();
+        }
+    }
+
+    private boolean socialSmallSubtreeMatches(AccessibilityNodeInfo node,
+                                               int depth, int[] budget) {
+        if (node == null || budget[0]-- <= 0) return false;
+        CharSequence value = node.getText();
+        CharSequence description = node.getContentDescription();
+        if ((value != null && matchesKeyword(value.toString()))
+                || (description != null && matchesKeyword(description.toString())))
+            return true;
+        if (depth == 0 || node.getChildCount() > 6) return false;
+        for (int i = 0; i < node.getChildCount() && budget[0] > 0; i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) continue;
+            try {
+                if (socialSmallSubtreeMatches(child, depth - 1, budget))
+                    return true;
+            } finally {
+                child.recycle();
+            }
+        }
+        return false;
     }
 
     /**
