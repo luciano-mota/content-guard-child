@@ -8,8 +8,19 @@ android {
         applicationId 'br.com.lcmtech.contentguard'
         minSdk 26
         targetSdk 35
-        versionCode 3
-        versionName '0.3.0-search-suggestions'
+        versionCode 4
+        versionName '0.4.0-google-tv'
+    }
+    flavorDimensions 'device'
+    productFlavors {
+        mobile {
+            dimension 'device'
+        }
+        tv {
+            dimension 'device'
+            applicationIdSuffix '.tv'
+            versionNameSuffix '-tv'
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
