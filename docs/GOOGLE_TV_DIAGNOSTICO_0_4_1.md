@@ -1,9 +1,12 @@
 # Diagnóstico da Acessibilidade na Google TV — v0.4.1
 
-O aplicativo agora exibe três informações independentes:
+O aplicativo agora exibe quatro informações independentes:
 - **Autorizado nas configurações Android**: se a lista interna `ENABLED_ACCESSIBILITY_SERVICES` contém exatamente o serviço ContentGuard TV.
 - **Serviço conectado ao sistema**: se `TvYoutubeAccessibilityService.onServiceConnected()` foi executado no processo do aplicativo.
 - **Reconhecido pelo gerenciador Android**: se a API `AccessibilityManager` relata o serviço no conjunto de serviços habilitados.
+- **Eventos recebidos do YouTube TV**: SIM se o serviço recebeu ao menos um evento do pacote oficial do YouTube TV nesta sessão; mostra apenas há quantos segundos, sem armazenar títulos, pesquisas ou IDs de vídeos.
+
+**Como testar:** abra o ContentGuard, confirme os indicadores, vá ao YouTube da TV, navegue algumas telas, volte para o ContentGuard e selecione **Atualizar diagnóstico**. Se permanecer **NENHUM**, o pacote monitorado pode estar diferente, o serviço pode não estar conectado ou o YouTube pode não expor eventos acessíveis.
 
 **Resultados:**
 - SIM/SIM/SIM: serviço ativado e conectado. Mesmo assim, os títulos do YouTube TV podem ser inacessíveis.
