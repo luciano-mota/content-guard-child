@@ -52,6 +52,13 @@ public final class GuardAccessibilityService extends AccessibilityService {
         }
 
         if (!SUPPORTED_CONTENT_APPS.contains(pkg)) return;
+        // Chrome's omnibox may report the focused URL field through window-content
+        // events rather than a directly editable TYPE_VIEW_TEXT_CHANGED source.
+        // Only inspect Chrome's currently focused address/search field.
+        if ("com.android.chrome".equals(pkg)
+                && (event.getEventType() == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
+                    || event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+                && blockChromeAddressIfMatched()) return;
         AccessibilityNodeInfo source = event.getSource();
         if (source == null) return;
         try {
@@ -72,6 +79,59 @@ public final class GuardAccessibilityService extends AccessibilityService {
         } finally {
             source.recycle();
         }
+    }
+
+    /**
+     * Best-effort handling of Chrome omnibox. We deliberately do not scan the
+     * whole web page or use arbitrary page text: that would block unrelated
+     * content when a recommendation mentions a forbidden word.
+     *
+     * No accessibility API guarantees access to every Chrome version's URL bar.
+     */
+    private boolean blockChromeAddressIfMatched() {
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null) return false;
+        try {
+            AccessibilityNodeInfo focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+            if (focused == null) return false;
+            try {
+                if (focused.isPassword() || !isChromeOmnibox(focused)) return false;
+                CharSequence value = focused.getText();
+                if (value == null || (!matchesKeyword(value.toString())
+                        && !matchesDomain(value.toString()))) return false;
+                Bundle clearArgs = new Bundle();
+                clearArgs.putCharSequence(
+                        AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "");
+                // In some Chrome versions, the omnibox refuses ACTION_SET_TEXT.
+                // We still back out of the address field instead of submitting it.
+                focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, clearArgs);
+                block("Pesquisa bloqueada", false);
+                return true;
+            } finally {
+                focused.recycle();
+            }
+        } finally {
+            root.recycle();
+        }
+    }
+
+    private boolean isChromeOmnibox(AccessibilityNodeInfo focused) {
+        AccessibilityNodeInfo node = focused;
+        // The edit field may be wrapped in one or two Chrome UI containers.
+        for (int depth = 0; depth < 3 && node != null; depth++) {
+            String id = node.getViewIdResourceName();
+            if (id != null && (id.endsWith(":id/url_bar")
+                    || id.endsWith(":id/search_box_text")
+                    || id.toLowerCase(java.util.Locale.ROOT).contains("omnibox"))) {
+                if (node != focused) node.recycle();
+                return true;
+            }
+            AccessibilityNodeInfo parent = node.getParent();
+            if (node != focused) node.recycle();
+            node = parent;
+        }
+        if (node != null && node != focused) node.recycle();
+        return false;
     }
 
     private boolean clickedTitleMatches(AccessibilityNodeInfo node) {
