@@ -140,13 +140,14 @@ public final class MainActivity extends Activity {
         if (!authenticated) return;
         initializeLayout();
         addHeading("ContentGuard", 27);
-        addBody("Bloqueio local por regras • Android MVP 0.1");
+        addBody("Bloqueio local por regras • Android 0.5 (pesquisas TikTok/Kwai)");
         addHeading("1. Ativar proteção", 19);
         addBody(isServiceEnabled() ? "✓ Serviço de acessibilidade ativado" :
                 "⚠ Serviço de acessibilidade desativado");
         addButton("Abrir configurações de acessibilidade", () -> showConsentDialog());
         addHeading("2. Regras de bloqueio", 19);
-        addBody("PALAVRA: pesquisas e títulos acessíveis de YouTube/navegadores. " +
+        addBody("PALAVRA: pesquisas e títulos acessíveis no YouTube/navegadores; " +
+                "buscas e sugestões do TikTok e Kwai (experimental). " +
                 "DOMÍNIO: endereço digitado em navegadores compatíveis. " +
                 "APP: pacote do aplicativo bloqueado ao abrir.");
         addButton("+ Adicionar regra", this::chooseRuleType);
@@ -171,7 +172,9 @@ public final class MainActivity extends Activity {
                 "permissão de internet e não registra pesquisas ou histórico de navegação. " +
                 "A API de acessibilidade pode ver textos presentes nas telas dos apps monitorados, " +
                 "mediante autorização da responsável.");
-        addBody("Não garante ocultar miniaturas, sugestões ou vídeos antes de aparecerem. " +
+        addBody("O filtro do TikTok/Kwai depende dos campos de pesquisa acessíveis; " +
+                "não filtra o feed de vídeos, comentários nem mensagens privadas. " +
+                "Não garante ocultar miniaturas, sugestões ou vídeos antes de aparecerem. " +
                 "Links abertos sem digitar a URL podem escapar do filtro de domínios. " +
                 "O PIN não impede desinstalação ou desativação do serviço nas Configurações do Android.");
     }
@@ -180,8 +183,8 @@ public final class MainActivity extends Activity {
         new AlertDialog.Builder(this)
                 .setTitle("Uso da acessibilidade")
                 .setMessage("Com sua autorização, o ContentGuard observa eventos de interface " +
-                        "do YouTube e de navegadores compatíveis, como texto digitado em " +
-                        "buscas, títulos clicados e aplicativo aberto. Isso é necessário " +
+                        "do YouTube, TikTok, Kwai e navegadores compatíveis, incluindo " +
+                        "campos de pesquisa e sugestões selecionadas. Isso é necessário " +
                         "para tentar interromper conteúdos proibidos. Nenhum desses textos " +
                         "é salvo ou enviado. O serviço pode ser desligado nas Configurações.")
                 .setNegativeButton("Cancelar", null)
