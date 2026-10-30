@@ -213,27 +213,64 @@ public final class MainActivity extends Activity {
     }
 
     private void addRuleDialog(Rule.Type type) {
+        boolean keyword = type == Rule.Type.KEYWORD;
         EditText input = new EditText(this);
-        input.setSingleLine(true);
-        input.setHint(type == Rule.Type.KEYWORD ? "ex.: Bob Esponja" :
+        input.setHint(keyword ? "Bob Esponja, SpongeBob, SquarePants" :
                 type == Rule.Type.DOMAIN ? "ex.: exemplo.com" : "ex.: com.exemplo.app");
         input.setPadding(dp(22), dp(15), dp(22), dp(15));
-        new AlertDialog.Builder(this)
-                .setTitle("Adicionar " + typeLabel(type).toLowerCase())
+        if (keyword) {
+            input.setSingleLine(false);
+            input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+            input.setMinLines(3);
+            input.setMaxLines(6);
+            input.setGravity(Gravity.TOP);
+        } else {
+            input.setSingleLine(true);
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setTitle(keyword ? "Adicionar palavras ou expressões" :
+                        "Adicionar " + typeLabel(type).toLowerCase())
                 .setView(input)
                 .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Adicionar", (dialog, button) -> {
+                .setPositiveButton("Adicionar", null);
+        if (keyword) {
+            builder.setMessage("Separe palavras ou expressões por vírgulas. " +
+                    "Cada item vira uma regra independente. Repetidos são ignorados.");
+        }
+
+        AlertDialog dialog = builder.create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v -> {
                     String value = input.getText().toString().trim();
-                    boolean valid = value.length() >= 2 && value.length() <= 180;
-                    if (type != Rule.Type.KEYWORD) valid &= value.matches("[A-Za-z0-9_.-]+") && value.contains(".");
+                    if (keyword) {
+                        try {
+                            int added = repository.addKeywords(value);
+                            if (added == 0) {
+                                toast("Nenhuma regra nova: confira os termos ou as duplicatas.");
+                                return;
+                            }
+                            dialog.dismiss();
+                            showDashboard();
+                            toast(added == 1 ? "1 palavra adicionada." :
+                                    added + " palavras adicionadas.");
+                        } catch (IllegalArgumentException error) {
+                            toast(error.getMessage());
+                        }
+                        return;
+                    }
+
+                    boolean valid = value.length() >= 2 && value.length() <= 180
+                            && value.matches("[A-Za-z0-9_.-]+") && value.contains(".");
                     if (!valid) {
                         toast("Valor inválido. Verifique o formato e tente novamente.");
                         return;
                     }
                     repository.add(new Rule(type, value));
+                    dialog.dismiss();
                     showDashboard();
-                })
-                .show();
+                }));
+        dialog.show();
     }
 
     private String typeLabel(Rule.Type type) {

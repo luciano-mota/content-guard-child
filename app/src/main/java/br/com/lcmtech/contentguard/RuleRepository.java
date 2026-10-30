@@ -6,6 +6,8 @@ import org.json.JSONArray;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Stores only rule definitions. NEVER stores captured searches, UI text or browsing history. */
 public final class RuleRepository {
@@ -35,6 +37,34 @@ public final class RuleRepository {
         List<Rule> rules = new ArrayList<>(getAll());
         rules.add(rule);
         save(rules);
+    }
+
+    /**
+     * Adds every new keyword in a single persisted transaction. Commas separate
+     * phrases; existing rules and equivalent spellings are not added again.
+     * Returns the number of new rules created. Domains/apps are unaffected.
+     */
+    public int addKeywords(String rawInput) {
+        List<String> values = KeywordBatchParser.parse(rawInput);
+        if (values.isEmpty()) return 0;
+
+        List<Rule> current = new ArrayList<>(getAll());
+        Set<String> existing = new HashSet<>();
+        for (Rule rule : current) {
+            if (rule.type == Rule.Type.KEYWORD) {
+                existing.add(RuleMatcher.normalize(rule.value));
+            }
+        }
+
+        int added = 0;
+        for (String value : values) {
+            if (existing.add(RuleMatcher.normalize(value))) {
+                current.add(new Rule(Rule.Type.KEYWORD, value));
+                added++;
+            }
+        }
+        if (added > 0) save(current);
+        return added;
     }
 
     public void remove(String id) {
