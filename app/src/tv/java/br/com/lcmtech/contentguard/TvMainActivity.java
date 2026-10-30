@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.text.InputType;
 import android.view.Gravity;
@@ -221,6 +222,16 @@ public final class TvMainActivity extends Activity {
                 19, connected ? Color.rgb(102, 237, 190) : Color.rgb(255, 197, 114));
         text("Reconhecido pelo gerenciador Android: " + (listed ? "SIM" : "NÃO"),
                 16, Color.LTGRAY);
+        long youtubeEvent = TvYoutubeAccessibilityService.lastYoutubeEventElapsed();
+        if (youtubeEvent > 0) {
+            long seconds = Math.max(0L, (SystemClock.elapsedRealtime() - youtubeEvent) / 1000L);
+            text("Eventos recebidos do YouTube TV: SIM (último há " + seconds + " s)",
+                    16, Color.rgb(102, 237, 190));
+        } else {
+            text("Eventos recebidos do YouTube TV: NENHUM nesta sessão. "
+                    + "Abra o YouTube, navegue e retorne para atualizar.",
+                    16, Color.rgb(255, 197, 114));
+        }
         if (configured && connected) {
             text("Filtro ATIVO. Falta validar a detecção no YouTube desta TV.",
                     17, Color.rgb(102, 237, 190));
