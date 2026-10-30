@@ -35,11 +35,18 @@ jobs:
       - name: Testar motor de regras (Java puro)
         run: bash engine-tests/run.sh
       - name: Compilar APK de debug
-        run: gradle --no-daemon :app:assembleDebug
-      - name: Publicar APK para teste
+        run: gradle --no-daemon :app:assembleMobileDebug :app:assembleTvDebug
+      - name: Publicar APK para celular
         uses: actions/upload-artifact@v4
         with:
-          name: contentguard-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: contentguard-android-debug-apk
+          path: app/build/outputs/apk/mobile/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publicar APK para Google TV
+        uses: actions/upload-artifact@v4
+        with:
+          name: contentguard-google-tv-debug-apk
+          path: app/build/outputs/apk/tv/debug/*.apk
           if-no-files-found: error
           retention-days: 14
