@@ -17,6 +17,14 @@ import java.util.Locale;
  */
 public final class TvYoutubeAccessibilityService extends AccessibilityService {
     private static final String YOUTUBE_TV = "com.google.android.youtube.tv";
+    // Both TV activity and AccessibilityService run in the same app process.
+    // This reflects onServiceConnected rather than just the Settings toggle.
+    private static volatile boolean connected;
+    private static volatile long lastYoutubeEventElapsed;
+
+    public static boolean isConnected() { return connected; }
+    /** Local-only timestamp, no title, text, video ID or search history retained. */
+    public static long lastYoutubeEventElapsed() { return lastYoutubeEventElapsed; }
     private List<Rule> rules = Collections.emptyList();
     private long lastBlock;
     private SharedPreferences prefs;
@@ -28,12 +36,16 @@ public final class TvYoutubeAccessibilityService extends AccessibilityService {
         prefs = getSharedPreferences(RuleRepository.PREFS, MODE_PRIVATE);
         changeListener = (p, key) -> rules = new RuleRepository(this).getAll();
         prefs.registerOnSharedPreferenceChangeListener(changeListener);
+        connected = true;
     }
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
-        if (event == null || event.getPackageName() == null || rules.isEmpty()
+        if (event == null || event.getPackageName() == null
                 || !YOUTUBE_TV.contentEquals(event.getPackageName())) return;
-        if (SystemClock.elapsedRealtime() - lastBlock < 1800) return;
+        // Received a real event from YouTube TV. We retain only a timestamp in
+        // memory to help the parent diagnose whether the TV exposes any events.
+        lastYoutubeEventElapsed = SystemClock.elapsedRealtime();
+        if (rules.isEmpty() || SystemClock.elapsedRealtime() - lastBlock < 1800) return;
         int type = event.getEventType();
         AccessibilityNodeInfo source = event.getSource();
         try {
@@ -148,6 +160,8 @@ public final class TvYoutubeAccessibilityService extends AccessibilityService {
     @Override public void onInterrupt() {}
 
     @Override public void onDestroy() {
+        connected = false;
+        lastYoutubeEventElapsed = 0L;
         if (prefs != null && changeListener != null)
             prefs.unregisterOnSharedPreferenceChangeListener(changeListener);
         super.onDestroy();

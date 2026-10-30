@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.text.InputType;
 import android.view.Gravity;
@@ -176,13 +177,32 @@ public final class TvMainActivity extends Activity {
                 }).show();
     }
 
-    private boolean isTvServiceEnabled() {
+    /** Settings, system API and live connection are separate signals on TV. */
+    private boolean isConfiguredInAndroid() {
+        try {
+            String setting = Settings.Secure.getString(
+                    getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+            if (setting == null) return false;
+            ComponentName target = new ComponentName(this, TvYoutubeAccessibilityService.class);
+            for (String entry : setting.split(":")) {
+                ComponentName name = ComponentName.unflattenFromString(entry.trim());
+                if (target.equals(name)) return true;
+            }
+        } catch (SecurityException ignored) {
+            // Some firmware may restrict reading this setting.
+        }
+        return false;
+    }
+
+    private boolean isListedByAccessibilityManager() {
         AccessibilityManager manager = (AccessibilityManager)
                 getSystemService(ACCESSIBILITY_SERVICE);
         if (manager == null) return false;
         ComponentName expected = new ComponentName(this, TvYoutubeAccessibilityService.class);
-        for (AccessibilityServiceInfo item : manager.getEnabledAccessibilityServiceList(
-                AccessibilityServiceInfo.FEEDBACK_ALL_MASK)) {
+        List<AccessibilityServiceInfo> services = manager.getEnabledAccessibilityServiceList(
+                AccessibilityServiceInfo.FEEDBACK_ALL_MASK);
+        if (services == null) return false;
+        for (AccessibilityServiceInfo item : services) {
             if (expected.equals(ComponentName.unflattenFromString(item.getId()))) return true;
         }
         return false;
@@ -193,11 +213,43 @@ public final class TvMainActivity extends Activity {
         renderFrame();
         text("ContentGuard Child · Google TV", 30, Color.WHITE);
         text("Filtro experimental para YouTube (sem navegador).", 18, Color.LTGRAY);
-        text(isTvServiceEnabled() ? "Proteção: serviço ATIVADO"
-                        : "Proteção: serviço DESATIVADO",
-                20, isTvServiceEnabled() ? Color.rgb(102, 237, 190)
-                        : Color.rgb(255, 197, 114));
-        button("Ativar / verificar Acessibilidade", this::openAccessibility);
+        boolean configured = isConfiguredInAndroid();
+        boolean listed = isListedByAccessibilityManager();
+        boolean connected = TvYoutubeAccessibilityService.isConnected();
+        text("Autorizado nas configurações Android: " + (configured ? "SIM" : "NÃO"),
+                19, configured ? Color.rgb(102, 237, 190) : Color.rgb(255, 197, 114));
+        text("Serviço conectado ao sistema: " + (connected ? "SIM" : "NÃO"),
+                19, connected ? Color.rgb(102, 237, 190) : Color.rgb(255, 197, 114));
+        text("Reconhecido pelo gerenciador Android: " + (listed ? "SIM" : "NÃO"),
+                16, Color.LTGRAY);
+        long youtubeEvent = TvYoutubeAccessibilityService.lastYoutubeEventElapsed();
+        if (youtubeEvent > 0) {
+            long seconds = Math.max(0L, (SystemClock.elapsedRealtime() - youtubeEvent) / 1000L);
+            text("Eventos recebidos do YouTube TV: SIM (último há " + seconds + " s)",
+                    16, Color.rgb(102, 237, 190));
+        } else {
+            text("Eventos recebidos do YouTube TV: NENHUM nesta sessão. "
+                    + "Abra o YouTube, navegue e retorne para atualizar.",
+                    16, Color.rgb(255, 197, 114));
+        }
+        if (configured && connected) {
+            text("Filtro ATIVO. Falta validar a detecção no YouTube desta TV.",
+                    17, Color.rgb(102, 237, 190));
+        } else if (configured && !connected) {
+            text("O Android registra a autorização, mas o serviço ainda não conectou. "
+                    + "Reinicie a TV e atualize o diagnóstico.",
+                    16, Color.rgb(255, 197, 114));
+        } else if (!configured && connected) {
+            text("O serviço está conectado, mas o Android não informou a autorização. "
+                    + "Confirme a configuração de Acessibilidade.",
+                    16, Color.rgb(255, 197, 114));
+        } else {
+            text("Ative especificamente ContentGuard Child TV · Filtro YouTube "
+                    + "nas configurações de Acessibilidade.",
+                    16, Color.rgb(255, 197, 114));
+        }
+        button("Atualizar diagnóstico", this::showDashboard);
+        button("Abrir configurações de Acessibilidade", this::openAccessibility);
         button("+ Adicionar palavras separadas por vírgulas", this::addKeywords);
         List<Rule> all = repository.getAll();
         int count = 0;
