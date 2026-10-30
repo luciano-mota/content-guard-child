@@ -2,6 +2,17 @@
 
 Aplicativo **experimental** de controle parental local. Regras genéricas por **palavra/frase**, **domínio** e **pacote de aplicativo**. Escrito em **Java 17** com APIs nativas do Android, sem backend e **sem permissão de internet**.
 
+## Versão Google TV / Android TV (experimental)
+
+O ContentGuard Child agora possui duas variantes de APK geradas pelo GitHub Actions:
+**Android (celular)** e **Google TV**. A versão TV mantém regras e PIN locais,
+exibe uma interface para controle remoto e usa um serviço de acessibilidade
+limitado ao pacote do YouTube para TV. O bloqueio ainda depende dos textos que
+o YouTube disponibiliza à API de Acessibilidade e **não é garantido**.
+
+Consulte [instruções e matriz de testes](docs/GOOGLE_TV_MVP.md).
+A versão para TV não tem navegador nem sincronização com o celular.
+
 ## Status
 
 - ✅ Cadastro em lote de palavras e expressões, separadas por vírgulas (ou linhas), com remoção de entradas vazias/duplicadas e persistência local (SharedPreferences JSON).
