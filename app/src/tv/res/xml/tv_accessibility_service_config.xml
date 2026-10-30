@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/accessibility_description"
-    android:packageNames="com.google.android.youtube.tv"
+    android:packageNames="com.google.android.youtube.tv,com.google.android.youtube.tvkids,com.android.tv.settings,com.google.android.tv.settings,com.android.settings,com.android.packageinstaller,com.google.android.packageinstaller,com.android.permissioncontroller,com.google.android.permissioncontroller"
     android:accessibilityEventTypes="typeViewTextChanged|typeViewClicked|typeWindowStateChanged|typeWindowContentChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:notificationTimeout="100"

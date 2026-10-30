@@ -7,16 +7,22 @@ import android.os.SystemClock;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.Toast;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
+import java.util.Set;
 
 /**
- * YouTube TV only. Best-effort: service cannot inspect video streams,
- * Google accounts, HTTPS payloads, or guarantee exposure of player titles.
+ * YouTube / YouTube Kids for TV, plus the anti-tamper check on TV settings.
+ * Best-effort: service cannot inspect video streams, Google accounts, HTTPS
+ * payloads, or guarantee exposure of player titles. Playback of blocked
+ * videos is mainly stopped by {@link PlaybackGuardService}.
  */
 public final class TvYoutubeAccessibilityService extends AccessibilityService {
-    private static final String YOUTUBE_TV = "com.google.android.youtube.tv";
+    private static final Set<String> YOUTUBE_TV_APPS = Collections.unmodifiableSet(
+            new HashSet<>(Arrays.asList(
+                    "com.google.android.youtube.tv", "com.google.android.youtube.tvkids")));
     // Both TV activity and AccessibilityService run in the same app process.
     // This reflects onServiceConnected rather than just the Settings toggle.
     private static volatile boolean connected;
@@ -32,6 +38,7 @@ public final class TvYoutubeAccessibilityService extends AccessibilityService {
 
     @Override protected void onServiceConnected() {
         super.onServiceConnected();
+        GuardControl.attach(this);
         rules = new RuleRepository(this).getAll();
         prefs = getSharedPreferences(RuleRepository.PREFS, MODE_PRIVATE);
         changeListener = (p, key) -> rules = new RuleRepository(this).getAll();
@@ -40,8 +47,10 @@ public final class TvYoutubeAccessibilityService extends AccessibilityService {
     }
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
-        if (event == null || event.getPackageName() == null
-                || !YOUTUBE_TV.contentEquals(event.getPackageName())) return;
+        if (event == null || event.getPackageName() == null) return;
+        // Settings screens that could disable or uninstall the guard.
+        if (GuardControl.blockTamper(this, event)) return;
+        if (!YOUTUBE_TV_APPS.contains(event.getPackageName().toString())) return;
         // Received a real event from YouTube TV. We retain only a timestamp in
         // memory to help the parent diagnose whether the TV exposes any events.
         lastYoutubeEventElapsed = SystemClock.elapsedRealtime();
@@ -123,43 +132,20 @@ public final class TvYoutubeAccessibilityService extends AccessibilityService {
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root == null) return false;
         try {
-            return checkPlayerTitle(root, 0, new int[] {130});
+            return GuardControl.playerTitleMatches(root, this::shortMatch, 0, new int[] {130});
         } finally { root.recycle(); }
-    }
-
-    private boolean checkPlayerTitle(AccessibilityNodeInfo node, int depth, int[] budget) {
-        if (node == null || budget[0]-- <= 0) return false;
-        String id = node.getViewIdResourceName();
-        if (id != null) {
-            String token = id.toLowerCase(Locale.ROOT);
-            // Require both watch/player context and title; generic video_title
-            // labels on home/search results are deliberately ignored.
-            boolean activePlayerLabel = token.contains("title")
-                    && (token.contains("player") || token.contains("watch"));
-            if (activePlayerLabel
-                    && (shortMatch(node.getText())
-                        || shortMatch(node.getContentDescription()))) return true;
-        }
-        if (depth >= 10) return false;
-        for (int i = 0; i < node.getChildCount() && budget[0] > 0; i++) {
-            AccessibilityNodeInfo child = node.getChild(i);
-            if (child == null) continue;
-            try {
-                if (checkPlayerTitle(child, depth + 1, budget)) return true;
-            } finally { child.recycle(); }
-        }
-        return false;
     }
 
     private void reject(String reason) {
         lastBlock = SystemClock.elapsedRealtime();
-        performGlobalAction(GLOBAL_ACTION_BACK);
+        GuardControl.leaveScreen(false);
         Toast.makeText(this, reason, Toast.LENGTH_SHORT).show();
     }
 
     @Override public void onInterrupt() {}
 
     @Override public void onDestroy() {
+        GuardControl.detach(this);
         connected = false;
         lastYoutubeEventElapsed = 0L;
         if (prefs != null && changeListener != null)

@@ -41,5 +41,21 @@ public final class RuleMatcherTest {
         assertTrue(!RuleMatcher.matchesGoogleSearchUrl(
                 "https://www.google.com/search?q=%XX", "Bob Esponja"),
                 "invalid escaped URL safely ignored");
+        // Evasions a child could try while typing.
+        assertTrue(RuleMatcher.containsPhrase("bobesponja episodio", "Bob Esponja"),
+                "missing space");
+        assertTrue(RuleMatcher.containsPhrase("B O B   E S P O N J A", "Bob Esponja"),
+                "spaced letters");
+        assertTrue(RuleMatcher.containsPhrase("B0b Esp0nja", "Bob Esponja"), "digits as letters");
+        assertTrue(RuleMatcher.containsPhrase("Bobb Espoonjaa", "Bob Esponja"), "repeated letters");
+        assertTrue(RuleMatcher.containsPhrase("Sponge Bob Square Pants", "SpongeBob"),
+                "split English title");
+        assertTrue(RuleMatcher.containsPhrase("SPONGEBOB", "Sponge Bob"), "joined English title");
+        assertTrue(!RuleMatcher.containsPhrase("Bobby Esponja", "Bob Esponja"),
+                "evasion matching keeps word boundaries");
+        assertTrue(!RuleMatcher.containsPhrase("esponja de cozinha", "Bob Esponja"),
+                "everyday word allowed");
+        assertTrue(!RuleMatcher.containsPhrase("bobina elétrica", "Bob"), "no prefix match");
+        assertTrue(!RuleMatcher.containsPhrase("Tom e Jerry", "Bob Esponja"), "permitted cartoon");
     }
 }

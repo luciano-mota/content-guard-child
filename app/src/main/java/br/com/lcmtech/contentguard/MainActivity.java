@@ -4,10 +4,8 @@ import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ComponentName;
-import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
@@ -140,19 +138,40 @@ public final class MainActivity extends Activity {
         if (!authenticated) return;
         initializeLayout();
         addHeading("ContentGuard", 27);
-        addBody("Bloqueio local por regras • Android 0.5 (pesquisas TikTok/Kwai)");
+        addBody("Bloqueio local por regras • Android 0.6 (bloqueio de reprodução)");
         addHeading("1. Ativar proteção", 19);
         addBody(isServiceEnabled() ? "✓ Serviço de acessibilidade ativado" :
                 "⚠ Serviço de acessibilidade desativado");
         addButton("Abrir configurações de acessibilidade", () -> showConsentDialog());
-        addHeading("2. Regras de bloqueio", 19);
-        addBody("PALAVRA: pesquisas e títulos acessíveis no YouTube/navegadores; " +
-                "buscas e sugestões do TikTok e Kwai (experimental). " +
+        addHeading("2. Bloqueio de reprodução", 19);
+        addBody(PlaybackGuardService.isGranted(this)
+                ? "✓ Vídeos com palavras bloqueadas no título ou no canal são pausados " +
+                  "em qualquer player (YouTube, YouTube Kids, streaming)."
+                : "⚠ Desativado: vídeos abertos pelo feed, autoplay ou links não são barrados.");
+        addButton("Autorizar bloqueio de reprodução", () ->
+                GuardSetup.openNotificationAccess(this));
+        addHeading("3. Proteção contra desativação", 19);
+        addBody("Telas do Android que permitem desativar, forçar parada ou desinstalar " +
+                "o ContentGuard são fechadas. " + GuardSetup.settingsGuardStatus(this));
+        addButton("Liberar Configurações por 15 minutos", () -> {
+            GuardControl.pauseSettingsGuard(this);
+            showDashboard();
+        });
+        addButton("Bloquear Configurações agora", () -> {
+            GuardControl.resumeSettingsGuard(this);
+            showDashboard();
+        });
+        addHeading("4. Regras de bloqueio", 19);
+        addBody("PALAVRA: qualquer desenho, personagem, canal ou tema indesejado. Vale " +
+                "para pesquisas e sugestões no YouTube, Google e navegadores, pesquisas do " +
+                "TikTok e Kwai, títulos no player do YouTube e título/canal de vídeos " +
+                "em reprodução. Cadastre também nomes de personagens e de canais. " +
                 "DOMÍNIO: endereço digitado em navegadores compatíveis. " +
                 "APP: pacote do aplicativo bloqueado ao abrir.");
         addButton("+ Adicionar regra", this::chooseRuleType);
         List<Rule> rules = repository.getAll();
-        if (rules.isEmpty()) addBody("Nenhuma regra cadastrada. Exemplo: PALAVRA → Bob Esponja.");
+        if (rules.isEmpty()) addBody("Nenhuma regra cadastrada. Exemplo: PALAVRA → " +
+                "Bob Esponja, Patrick Estrela, Lula Molusco.");
         for (Rule rule : rules) {
             Button item = new Button(this);
             item.setAllCaps(false);
@@ -176,7 +195,9 @@ public final class MainActivity extends Activity {
                 "não filtra o feed de vídeos, comentários nem mensagens privadas. " +
                 "Não garante ocultar miniaturas, sugestões ou vídeos antes de aparecerem. " +
                 "Links abertos sem digitar a URL podem escapar do filtro de domínios. " +
-                "O PIN não impede desinstalação ou desativação do serviço nas Configurações do Android.");
+                "Vídeos cujo título e canal não contêm nenhuma palavra cadastrada não são " +
+                "reconhecidos. Modo de segurança, ADB e restauração de fábrica " +
+                "desativam a proteção.");
     }
 
     private void showConsentDialog() {
@@ -189,7 +210,7 @@ public final class MainActivity extends Activity {
                         "é salvo ou enviado. O serviço pode ser desligado nas Configurações.")
                 .setNegativeButton("Cancelar", null)
                 .setPositiveButton("Entendi, configurar", (d, w) ->
-                        startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)))
+                        GuardSetup.openAccessibilitySettings(this))
                 .show();
     }
 

@@ -11,12 +11,51 @@ import java.util.Locale;
 public final class RuleMatcher {
     private RuleMatcher() {}
 
-    /** Case/accent/punctuation insensitive phrase matching. */
+    /**
+     * Case/accent/punctuation insensitive phrase matching. Also resists common
+     * evasions: digits as letters ("B0b Esp0nja"), missing or extra spaces
+     * ("bobesponja", "B O B esponja") and repeated letters ("Boob Espoonja").
+     * Matches still start and end on word boundaries, so "Bobby" is not "Bob".
+     */
     public static boolean containsPhrase(String visibleText, String forbiddenPhrase) {
         String haystack = normalize(visibleText);
         String needle = normalize(forbiddenPhrase);
         if (needle.isEmpty() || haystack.isEmpty()) return false;
-        return (" " + haystack + " ").contains(" " + needle + " ");
+        if ((" " + haystack + " ").contains(" " + needle + " ")) return true;
+
+        String target = fold(needle).replace(" ", "");
+        String[] words = fold(haystack).split(" ");
+        for (int start = 0; start < words.length; start++) {
+            StringBuilder joined = new StringBuilder();
+            for (int end = start; end < words.length
+                    && joined.length() < target.length(); end++) {
+                joined.append(words[end]);
+            }
+            if (joined.toString().equals(target)) return true;
+        }
+        return false;
+    }
+
+    /** Applied to normalized text only for matching, never to stored rules. */
+    private static String fold(String normalized) {
+        StringBuilder out = new StringBuilder(normalized.length());
+        for (int i = 0; i < normalized.length(); i++) {
+            char c = normalized.charAt(i);
+            switch (c) {
+                case '0': c = 'o'; break;
+                case '1': c = 'i'; break;
+                case '3': c = 'e'; break;
+                case '4': c = 'a'; break;
+                case '5': c = 's'; break;
+                case '7': c = 't'; break;
+                case '8': c = 'b'; break;
+                default: break;
+            }
+            // Collapse repeated letters: "boob" -> "bob", "espoonja" -> "esponja".
+            if (c != ' ' && out.length() > 0 && out.charAt(out.length() - 1) == c) continue;
+            out.append(c);
+        }
+        return out.toString();
     }
 
     public static String normalize(String value) {

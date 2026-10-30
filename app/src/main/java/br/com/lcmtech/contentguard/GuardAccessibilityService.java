@@ -18,10 +18,24 @@ import java.util.HashSet;
  * It cannot guarantee removal of YouTube recommendations or prevent all content flashes.
  */
 public final class GuardAccessibilityService extends AccessibilityService {
+    /** YouTube apps: also checked for the title of the video in the player. */
+    private static final Set<String> YOUTUBE_APPS =
+            Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+                    "com.google.android.youtube", "com.google.android.apps.youtube.kids",
+                    "app.revanced.android.youtube")));
     private static final Set<String> SUPPORTED_CONTENT_APPS =
             Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
-                    "com.google.android.youtube", "com.android.chrome", "org.mozilla.firefox",
-                    "com.sec.android.app.sbrowser", "com.microsoft.emmx", "com.brave.browser")));
+                    "com.google.android.youtube", "com.google.android.apps.youtube.kids",
+                    "app.revanced.android.youtube",
+                    // Google search bar/widget and Google Go: a search there skips the browser.
+                    "com.google.android.googlequicksearchbox", "com.google.android.apps.searchlite",
+                    "com.android.chrome", "com.chrome.beta", "com.chrome.dev", "com.chrome.canary",
+                    "org.mozilla.firefox", "org.mozilla.firefox_beta", "org.mozilla.focus",
+                    "com.sec.android.app.sbrowser", "com.sec.android.app.sbrowser.beta",
+                    "com.microsoft.emmx", "com.brave.browser", "com.opera.browser",
+                    "com.opera.mini.native", "com.opera.gx", "com.duckduckgo.mobile.android",
+                    "com.mi.globalbrowser", "com.android.browser", "com.vivaldi.browser",
+                    "com.kiwibrowser.browser", "com.UCMobile.intl")));
     private List<Rule> rules = Collections.emptyList();
     private long lastBlock = 0L;
     private SharedPreferences preferences;
@@ -29,6 +43,7 @@ public final class GuardAccessibilityService extends AccessibilityService {
 
     @Override public void onServiceConnected() {
         super.onServiceConnected();
+        GuardControl.attach(this);
         rules = new RuleRepository(this).getAll();
         preferences = getSharedPreferences(RuleRepository.PREFS, MODE_PRIVATE);
         listener = (p, key) -> rules = new RuleRepository(this).getAll();
@@ -38,6 +53,8 @@ public final class GuardAccessibilityService extends AccessibilityService {
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event == null || event.getPackageName() == null) return;
         String pkg = event.getPackageName().toString();
+        // Before any rule check: disabling/uninstalling must stay blocked even with no rules.
+        if (GuardControl.blockTamper(this, event)) return;
         if (pkg.equals(getPackageName()) || rules.isEmpty()) return;
         long now = SystemClock.elapsedRealtime();
         if (now - lastBlock < 1500L) return;
@@ -61,16 +78,24 @@ public final class GuardAccessibilityService extends AccessibilityService {
         if (!SUPPORTED_CONTENT_APPS.contains(pkg)) return;
         // Chrome's omnibox may report the focused URL field through window-content
         // events rather than a directly editable TYPE_VIEW_TEXT_CHANGED source.
-        // Only inspect Chrome's currently focused address/search field.
+        // Suggestions/history and voice search can also fill a field without a
+        // text-change event, so every supported app gets its editable fields
+        // (only editable ones) inspected when the window changes.
         final int type = event.getEventType();
-        // Suggestions/history can navigate without producing a text-change event.
-        // Inspect only editable Chrome fields when the active window changes,
-        // including the Google results search box after selecting a suggestion.
-        if ("com.android.chrome".equals(pkg)
-                && (type == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
+        if ((type == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
                     || type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
                     || type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
-                && blockChromeSearchFieldIfMatched()) return;
+                && blockSearchFieldIfMatched()) return;
+
+        // Videos opened from the feed, autoplay or Shorts never pass through a
+        // search: check the title of the video currently in the player.
+        if (YOUTUBE_APPS.contains(pkg)
+                && (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+                    || type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+                && playerTitleMatches()) {
+            block("Vídeo bloqueado", false);
+            return;
+        }
 
         AccessibilityNodeInfo source = event.getSource();
         try {
@@ -272,7 +297,7 @@ public final class GuardAccessibilityService extends AccessibilityService {
      * not TEXT_CHANGED. Scan a bounded number of accessibility nodes, but only
      * read editable inputs: NEVER match against arbitrary Google result cards.
      */
-    private boolean blockChromeSearchFieldIfMatched() {
+    private boolean blockSearchFieldIfMatched() {
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root == null) return false;
         try {
@@ -395,12 +420,26 @@ public final class GuardAccessibilityService extends AccessibilityService {
     private void block(String reason, boolean returnHome) {
         lastBlock = SystemClock.elapsedRealtime();
         // Back keeps YouTube/browser open; Home is used only for a blocked app.
-        performGlobalAction(returnHome ? GLOBAL_ACTION_HOME : GLOBAL_ACTION_BACK);
+        GuardControl.leaveScreen(returnHome);
         Toast.makeText(this, reason, Toast.LENGTH_SHORT).show();
     }
 
     @Override public void onInterrupt() {}
+
+    private boolean playerTitleMatches() {
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null) return false;
+        try {
+            return GuardControl.playerTitleMatches(root, value -> value != null
+                    && value.length() <= 250 && matchesKeyword(value.toString()),
+                    0, new int[] {160});
+        } finally {
+            root.recycle();
+        }
+    }
+
     @Override public void onDestroy() {
+        GuardControl.detach(this);
         if (preferences != null && listener != null)
             preferences.unregisterOnSharedPreferenceChangeListener(listener);
         super.onDestroy();

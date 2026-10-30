@@ -2,7 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- TV edition has its own launcher and only monitors YouTube for TV. -->
+    <!-- TV edition has its own launcher. Its accessibility service monitors
+         YouTube / YouTube Kids for TV and the settings screens that could
+         disable the guard; PlaybackGuardService (main manifest) pauses
+         blocked videos in any player. -->
     <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 

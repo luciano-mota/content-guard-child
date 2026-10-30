@@ -4,7 +4,6 @@ import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ComponentName;
-import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -114,7 +113,7 @@ public final class TvMainActivity extends Activity {
     private void showLocked() {
         renderFrame();
         text("ContentGuard Child · TV", 30, Color.WHITE);
-        text("Proteção de conteúdo no YouTube da Google TV.", 19, Color.LTGRAY);
+        text("Proteção de conteúdo no YouTube e YouTube Kids da Google TV.", 19, Color.LTGRAY);
         text("Use o controle remoto. O acesso às regras requer o PIN da pessoa responsável.",
                 16, Color.LTGRAY);
     }
@@ -212,7 +211,36 @@ public final class TvMainActivity extends Activity {
         if (!authenticated) return;
         renderFrame();
         text("ContentGuard Child · Google TV", 30, Color.WHITE);
-        text("Filtro experimental para YouTube (sem navegador).", 18, Color.LTGRAY);
+        text("Filtro experimental para YouTube e YouTube Kids (sem navegador).",
+                18, Color.LTGRAY);
+        boolean playbackGranted = PlaybackGuardService.isGranted(this);
+        boolean playbackConnected = PlaybackGuardService.isConnected();
+        text("BLOQUEIO DE REPRODUÇÃO: " + (playbackGranted && playbackConnected ? "ATIVO"
+                        : playbackGranted ? "AUTORIZADO, AGUARDANDO CONEXÃO" : "DESATIVADO"),
+                21, playbackGranted && playbackConnected
+                        ? Color.rgb(102, 237, 190) : Color.rgb(255, 197, 114));
+        text("Pausa vídeos cujo título ou canal contenha uma palavra cadastrada, mesmo "
+                + "abertos por recomendação, autoplay ou busca por voz.", 16, Color.LTGRAY);
+        long sessionEvent = PlaybackGuardService.lastSessionEventElapsed();
+        if (sessionEvent > 0) {
+            long seconds = Math.max(0L, (SystemClock.elapsedRealtime() - sessionEvent) / 1000L);
+            text("Vídeo detectado na sessão de mídia: SIM (último há " + seconds + " s)",
+                    16, Color.rgb(102, 237, 190));
+        } else if (playbackGranted) {
+            text("Vídeo detectado na sessão de mídia: NENHUM ainda. Toque um vídeo "
+                    + "permitido e atualize o diagnóstico.", 16, Color.rgb(255, 197, 114));
+        }
+        button("Autorizar bloqueio de reprodução", () ->
+                GuardSetup.openNotificationAccess(this));
+        text(GuardSetup.settingsGuardStatus(this), 16, Color.LTGRAY);
+        button("Liberar Configurações por 15 minutos", () -> {
+            GuardControl.pauseSettingsGuard(this);
+            showDashboard();
+        });
+        button("Bloquear Configurações agora", () -> {
+            GuardControl.resumeSettingsGuard(this);
+            showDashboard();
+        });
         boolean configured = isConfiguredInAndroid();
         boolean listed = isListedByAccessibilityManager();
         boolean connected = TvYoutubeAccessibilityService.isConnected();
@@ -255,6 +283,7 @@ public final class TvMainActivity extends Activity {
         int count = 0;
         for (Rule rule : all) if (rule.type == Rule.Type.KEYWORD) count++;
         text("Regras de palavras: " + count, 20, Color.WHITE);
+        text("Cadastre desenhos, personagens, canais ou temas indesejados.", 16, Color.LTGRAY);
         for (Rule rule : all) {
             if (rule.type != Rule.Type.KEYWORD) continue;
             button("Remover: " + rule.value, () ->
@@ -267,9 +296,9 @@ public final class TvMainActivity extends Activity {
         }
         text("As regras são armazenadas apenas nesta TV. Não são sincronizadas com o celular.",
                 16, Color.LTGRAY);
-        text("Limitação: o YouTube para TV pode ocultar títulos dos serviços de "
-                        + "Acessibilidade. A reprodução pode começar antes do bloqueio ou não ser "
-                        + "identificada. Não substitui a supervisão da responsável.",
+        text("Limitação: os primeiros segundos podem aparecer antes da pausa, e vídeos "
+                        + "cujo título e canal não contêm nenhuma palavra cadastrada não são "
+                        + "reconhecidos. Não substitui a supervisão da responsável.",
                 15, Color.LTGRAY);
     }
 
@@ -277,15 +306,13 @@ public final class TvMainActivity extends Activity {
         new AlertDialog.Builder(this)
                 .setTitle("Autorizar leitura de interface")
                 .setMessage("Com seu consentimento, o ContentGuard observa apenas eventos do "
-                        + "YouTube para TV, como buscas, seleção de vídeos e títulos acessíveis. "
+                        + "YouTube e YouTube Kids para TV, como buscas, seleção de vídeos e "
+                        + "títulos acessíveis, e fecha as telas de Configurações que permitiriam "
+                        + "desativá-lo. "
                         + "Esses textos não são armazenados nem enviados. "
                         + "A ativação é manual nas configurações do aparelho e pode ser revogada.")
-                .setPositiveButton("Abrir configurações", (d, w) -> {
-                    try { startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); }
-                    catch (Exception error) {
-                        notifyUser("Abra Acessibilidade nas configurações da TV.");
-                    }
-                })
+                .setPositiveButton("Abrir configurações", (d, w) ->
+                        GuardSetup.openAccessibilitySettings(this))
                 .setNegativeButton("Cancelar", null).show();
     }
 

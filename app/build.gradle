@@ -15,12 +15,14 @@ android {
     productFlavors {
         mobile {
             dimension 'device'
-            versionCode 6
-            versionName '0.5.0-social-search'
+            versionCode 7
+            versionName '0.6.0-playback-guard'
         }
         tv {
             dimension 'device'
             applicationIdSuffix '.tv'
+            versionCode 7
+            versionName '0.6.0-playback-guard'
             versionNameSuffix '-tv'
         }
     }

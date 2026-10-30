@@ -6,9 +6,14 @@ javac -encoding UTF-8 -d .testbuild \
   app/src/main/java/br/com/lcmtech/contentguard/RuleMatcher.java \
   app/src/main/java/br/com/lcmtech/contentguard/KeywordBatchParser.java \
   app/src/main/java/br/com/lcmtech/contentguard/SocialSearchRules.java \
+  app/src/main/java/br/com/lcmtech/contentguard/PlaybackRules.java \
+  app/src/main/java/br/com/lcmtech/contentguard/TamperRules.java \
   engine-tests/RuleMatcherTest.java engine-tests/KeywordBatchParserTest.java \
-  engine-tests/SocialSearchRulesTest.java
+  engine-tests/SocialSearchRulesTest.java engine-tests/PlaybackRulesTest.java \
+  engine-tests/TamperRulesTest.java
 java -cp .testbuild RuleMatcherTest
 java -cp .testbuild KeywordBatchParserTest
 java -cp .testbuild SocialSearchRulesTest
+java -cp .testbuild PlaybackRulesTest
+java -cp .testbuild TamperRulesTest
 rm -rf .testbuild

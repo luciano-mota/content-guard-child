@@ -29,5 +29,16 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
         </service>
+        <!-- Reads only the active media sessions (title/channel of the video
+             playing) to pause blocked videos; notifications are never read. -->
+        <service
+            android:name=".PlaybackGuardService"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true"
+            android:label="ContentGuard · Bloqueio de reprodução">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>

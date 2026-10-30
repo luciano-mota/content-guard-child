@@ -10,6 +10,12 @@ exibe uma interface para controle remoto e usa um serviço de acessibilidade
 limitado ao pacote do YouTube para TV. O bloqueio ainda depende dos textos que
 o YouTube disponibiliza à API de Acessibilidade e **não é garantido**.
 
+**Novo na 0.6:** bloqueio de **reprodução** pela sessão de mídia do Android
+(celular e TV): vídeos cujo título ou canal contenha uma palavra cadastrada são
+pausados, mesmo abertos por recomendação, autoplay ou busca por voz. Também há
+proteção contra desativar/desinstalar pelas Configurações. Veja
+[bloqueio de reprodução e cenários cobertos](docs/BLOQUEIO_REPRODUCAO_0_6.md).
+
 Consulte [instruções e matriz de testes](docs/GOOGLE_TV_MVP.md).
 A versão para TV não tem navegador nem sincronização com o celular.
 
