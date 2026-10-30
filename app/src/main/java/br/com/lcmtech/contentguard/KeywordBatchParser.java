@@ -17,7 +17,7 @@ public final class KeywordBatchParser {
      * are retained just once. Invalid entries reject the entire batch.
      */
     public static List<String> parse(String rawInput) {
-        if (rawInput == null || rawInput.isBlank()) return Collections.emptyList();
+        if (rawInput == null || rawInput.trim().isEmpty()) return Collections.emptyList();
         List<String> result = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         for (String part : rawInput.split("[,\\r\\n]", -1)) {
